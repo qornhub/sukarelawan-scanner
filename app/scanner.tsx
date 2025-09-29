@@ -1,14 +1,20 @@
 // app/scanner.tsx
 import React, { useEffect, useState, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert, Button } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Alert, ActivityIndicator, Dimensions } from 'react-native';
 import { CameraView, Camera } from 'expo-camera';
 import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import api, { loadTokenAndUser } from './api';
+
+const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
+const SCANNER_SIZE = Math.min(screenWidth * 0.7, 300);
 
 export default function ScannerScreen() {
   const router = useRouter();
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
   const [scanned, setScanned] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [torchOn, setTorchOn] = useState(false);
   const isProcessingRef = useRef(false);
 
   useEffect(() => {
@@ -22,6 +28,7 @@ export default function ScannerScreen() {
     if (isProcessingRef.current) return;
     isProcessingRef.current = true;
     setScanned(true);
+    setIsProcessing(true);
 
     try {
       await loadTokenAndUser();
@@ -36,7 +43,6 @@ export default function ScannerScreen() {
           signature: parsed.signature,
         });
         Alert.alert('Success', res.data.message || 'Attendance recorded');
-        isProcessingRef.current = false;
         return;
       }
 
@@ -51,7 +57,6 @@ export default function ScannerScreen() {
 
       if (!eventId) {
         Alert.alert('Unrecognized QR', 'This QR does not contain a valid event id or payload.');
-        isProcessingRef.current = false;
         return;
       }
 
@@ -70,6 +75,7 @@ export default function ScannerScreen() {
     } finally {
       setTimeout(() => {
         setScanned(false);
+        setIsProcessing(false);
         isProcessingRef.current = false;
       }, 1500);
     }
@@ -77,57 +83,233 @@ export default function ScannerScreen() {
 
   if (hasPermission === null) {
     return (
-      <View style={styles.center}>
-        <Text>Requesting camera permission...</Text>
+      <View style={[styles.center, styles.container]}>
+        <ActivityIndicator size="large" color="#0066cc" />
+        <Text style={styles.permissionText}>Requesting camera permission...</Text>
       </View>
     );
   }
+
   if (hasPermission === false) {
     return (
-      <View style={styles.center}>
-        <Text>No access to camera — please grant permission in settings.</Text>
-        <Button title="Back" onPress={() => router.back()} />
+      <View style={[styles.center, styles.container]}>
+        <Ionicons name="videocam-off" size={64} color="#999" />
+        <Text style={styles.permissionText}>No access to camera</Text>
+        <Text style={styles.subText}>Please grant permission in settings</Text>
+        <TouchableOpacity style={styles.button} onPress={() => router.back()}>
+          <Text style={styles.buttonText}>Go Back</Text>
+        </TouchableOpacity>
       </View>
     );
   }
 
   return (
     <View style={styles.container}>
-      <Text style={styles.header}>Scan Attendance QR</Text>
+      
 
       <View style={styles.scannerContainer}>
         <CameraView
           style={StyleSheet.absoluteFillObject}
           facing="back"
           barcodeScannerSettings={{
-            barcodeTypes: ["qr", "pdf417", "code128"], // allow QR & others
+            barcodeTypes: ["qr", "pdf417", "code128"],
           }}
           onBarcodeScanned={scanned ? undefined : handleBarCodeScanned}
+          flash={torchOn ? 'on' : 'off'}
         />
+        
+        {/* Scanner Frame Overlay */}
+        <View style={styles.overlay}>
+          <View style={styles.scannerFrame}>
+            <View style={[styles.corner, styles.cornerTopLeft]} />
+            <View style={[styles.corner, styles.cornerTopRight]} />
+            <View style={[styles.corner, styles.cornerBottomLeft]} />
+            <View style={[styles.corner, styles.cornerBottomRight]} />
+          </View>
+          
+          {isProcessing && (
+            <View style={styles.processingOverlay}>
+              <ActivityIndicator size="large" color="#fff" />
+              <Text style={styles.processingText}>Processing...</Text>
+            </View>
+          )}
+          
+          <Text style={styles.instructionText}>
+            Position the QR code within the frame
+          </Text>
+        </View>
       </View>
 
-      <View style={styles.controls}>
-        <TouchableOpacity style={styles.button} onPress={() => router.replace('/home')}>
-          <Text style={styles.buttonText}>Home</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.button, { backgroundColor: scanned ? '#999' : '#0066cc' }]}
-          onPress={() => setScanned(false)}
-          disabled={!scanned}
-        >
-          <Text style={styles.buttonText}>{scanned ? 'Ready again' : 'Scanning...'}</Text>
-        </TouchableOpacity>
-      </View>
+      
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff', paddingTop: 40 },
-  header: { textAlign: 'center', fontSize: 18, fontWeight: '700', marginBottom: 8 },
-  scannerContainer: { flex: 1, margin: 16, borderRadius: 12, overflow: 'hidden', backgroundColor: '#000' },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  controls: { flexDirection: 'row', justifyContent: 'space-around', padding: 16 },
-  button: { backgroundColor: '#0066cc', padding: 12, borderRadius: 8, minWidth: 120, alignItems: 'center' },
-  buttonText: { color: '#fff', fontWeight: '600' },
+  container: { 
+    flex: 1, 
+    backgroundColor: '#000',
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingTop: 50,
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+    backgroundColor: '#000',
+  },
+  backButton: {
+    padding: 8,
+  },
+  headerTitle: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  placeholder: {
+    width: 40,
+  },
+  scannerContainer: {
+    flex: 1,
+    margin: 16,
+    borderRadius: 16,
+    overflow: 'hidden',
+    backgroundColor: '#000',
+  },
+  center: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#fff',
+  },
+  permissionText: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginTop: 16,
+    textAlign: 'center',
+  },
+  subText: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 8,
+    textAlign: 'center',
+    marginBottom: 24,
+  },
+  overlay: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'transparent',
+  },
+  scannerFrame: {
+    width: SCANNER_SIZE,
+    height: SCANNER_SIZE,
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+    backgroundColor: 'transparent',
+    position: 'relative',
+  },
+  corner: {
+    position: 'absolute',
+    width: 30,
+    height: 30,
+    borderColor: '#0066cc',
+  },
+  cornerTopLeft: {
+    top: -2,
+    left: -2,
+    borderTopWidth: 4,
+    borderLeftWidth: 4,
+    borderTopLeftRadius: 12,
+  },
+  cornerTopRight: {
+    top: -2,
+    right: -2,
+    borderTopWidth: 4,
+    borderRightWidth: 4,
+    borderTopRightRadius: 12,
+  },
+  cornerBottomLeft: {
+    bottom: -2,
+    left: -2,
+    borderBottomWidth: 4,
+    borderLeftWidth: 4,
+    borderBottomLeftRadius: 12,
+  },
+  cornerBottomRight: {
+    bottom: -2,
+    right: -2,
+    borderBottomWidth: 4,
+    borderRightWidth: 4,
+    borderBottomRightRadius: 12,
+  },
+  instructionText: {
+    color: '#fff',
+    fontSize: 14,
+    marginTop: 32,
+    textAlign: 'center',
+    paddingHorizontal: 32,
+  },
+  processingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  processingText: {
+    color: '#fff',
+    marginTop: 12,
+    fontSize: 16,
+  },
+  controls: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    padding: 16,
+    backgroundColor: '#000',
+  },
+  controlButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    minWidth: 100,
+    justifyContent: 'center',
+  },
+  secondaryButton: {
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: '#0066cc',
+  },
+  torchButton: {
+    backgroundColor: '#333',
+  },
+  scanButton: {
+    backgroundColor: '#0066cc',
+  },
+  scanButtonDisabled: {
+    backgroundColor: '#666',
+  },
+  button: {
+    backgroundColor: '#0066cc',
+    padding: 12,
+    borderRadius: 8,
+    minWidth: 120,
+    alignItems: 'center',
+  },
+  buttonText: {
+    color: '#fff',
+    fontWeight: '600',
+    marginLeft: 8,
+  },
+  secondaryButtonText: {
+    color: '#0066cc',
+    fontWeight: '600',
+    marginLeft: 8,
+  },
 });
