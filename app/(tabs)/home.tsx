@@ -1,3 +1,4 @@
+// app/(tabs)/home.tsx
 import React, { useEffect, useState } from "react";
 import { 
   View, 
@@ -8,11 +9,12 @@ import {
   ScrollView,
   ActivityIndicator,
   RefreshControl,
-  SafeAreaView
+  SafeAreaView,
+  Alert,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import api, { loadTokenAndUser } from "../api";
+import api, { loadTokenAndUser, removeTokenAndUser } from "../api";
 import dayjs from "dayjs";
 
 export default function HomeScreen() {
@@ -26,8 +28,12 @@ export default function HomeScreen() {
       await loadTokenAndUser();
       const res = await api.get("/volunteer/profile");
       setProfile(res.data);
-    } catch (err) {
+    } catch (err: any) {
       console.error("Error fetching profile", err);
+      // if unauthorized, force logout (optional)
+      if (err?.response?.status === 401) {
+        await safeLogoutNavigate();
+      }
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -53,6 +59,36 @@ export default function HomeScreen() {
 
   const fallbackAvatar = require("../../assets/default-avatar.png");
 
+  // logout helper
+  const safeLogoutNavigate = async () => {
+    try {
+      await removeTokenAndUser();
+    } catch (e) {
+      // ignore errors clearing storage
+      console.warn("Error clearing token/user", e);
+    } finally {
+      router.replace("/login");
+    }
+  };
+
+  const handleLogout = () => {
+    Alert.alert(
+      "Logout",
+      "Are you sure you want to log out?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Logout",
+          style: "destructive",
+          onPress: async () => {
+            await safeLogoutNavigate();
+          },
+        },
+      ],
+      { cancelable: true }
+    );
+  };
+
   if (loading) {
     return (
       <SafeAreaView style={styles.safeArea}>
@@ -73,10 +109,11 @@ export default function HomeScreen() {
         }
         showsVerticalScrollIndicator={false}
       >
-        {/* Header with Welcome */}
-        <View style={styles.header}>
-          
-          <Text style={styles.nameText}>{profile?.name?.split(' ')[0] || "Volunteer"}! 👋</Text>
+        {/* Header with Welcome (no top-right logout) */}
+        <View style={styles.headerRow}>
+          <View>
+            <Text style={styles.nameText}>{profile?.name?.split(' ')[0] || "Volunteer"}! 👋</Text>
+          </View>
         </View>
 
         {/* Profile Card */}
@@ -110,35 +147,39 @@ export default function HomeScreen() {
 
         {/* Stats Row */}
         <View style={styles.statsContainer}>
-        <View style={styles.statItem}>
-          <Text style={styles.statValue}>{profile?.total_attended ?? 0}</Text>
-          <Text style={styles.statLabel}>Events</Text>
+          <View style={styles.statItem}>
+            <Text style={styles.statValue}>{profile?.total_attended ?? 0}</Text>
+            <Text style={styles.statLabel}>Events</Text>
+          </View>
+
+          <View style={styles.statDivider} />
+
+          <View style={styles.statItem}>
+            <Text style={styles.statValue}>{profile?.total_points ?? 0}</Text>
+            <Text style={styles.statLabel}>Points</Text>
+          </View>
         </View>
-
-        <View style={styles.statDivider} />
-
-        <View style={styles.statItem}>
-          <Text style={styles.statValue}>{profile?.total_points ?? 0}</Text>
-          <Text style={styles.statLabel}>Points</Text>
-        </View>
-      </View>
-
 
         {/* Quick Actions */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Quick Actions</Text>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Quick Actions</Text>
+          </View>
+
           <View style={styles.actionsGrid}>
+            {/* Scan QR - neutral card like others (icon still colored) */}
             <TouchableOpacity
-              style={[styles.actionCard, styles.primaryAction]}
+              style={styles.actionCard}
               onPress={() => router.push("/scanner")}
             >
-              <View style={styles.actionIconContainer}>
-                <Ionicons name="scan-outline" size={24} color="#fff" />
+              <View style={[styles.actionIconContainer, styles.neutralIcon]}>
+                <Ionicons name="scan-outline" size={24} color="#0066cc" />
               </View>
               <Text style={styles.actionText}>Scan QR</Text>
               <Text style={styles.actionSubtext}>Mark attendance</Text>
             </TouchableOpacity>
 
+            {/* Upcoming */}
             <TouchableOpacity
               style={styles.actionCard}
               onPress={() => router.push("/upcoming")}
@@ -150,6 +191,7 @@ export default function HomeScreen() {
               <Text style={styles.actionSubtext}>View events</Text>
             </TouchableOpacity>
 
+            {/* Attended */}
             <TouchableOpacity
               style={styles.actionCard}
               onPress={() => router.push("/attended")}
@@ -161,11 +203,20 @@ export default function HomeScreen() {
               <Text style={styles.actionSubtext}>Past events</Text>
             </TouchableOpacity>
 
-            
+            {/* Logout - placed as a grid item */}
+            <TouchableOpacity
+              style={styles.actionCard}
+              onPress={handleLogout}
+            >
+              <View style={[styles.actionIconContainer, styles.dangerIcon]}>
+                <Ionicons name="log-out-outline" size={24} color="#b71c1c" />
+              </View>
+              <Text style={styles.actionText}>Logout</Text>
+              <Text style={styles.actionSubtext}>Sign out of your account</Text>
+            </TouchableOpacity>
           </View>
         </View>
 
-        
       </ScrollView>
     </SafeAreaView>
   );
@@ -191,20 +242,21 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "#666",
   },
-  header: {
+
+  headerRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 24,
     marginTop: 10,
   },
-  welcomeText: {
-    fontSize: 16,
-    color: "#666",
-    marginBottom: 4,
-  },
+
   nameText: {
     fontSize: 28,
     fontWeight: "700",
     color: "#1a1a1a",
   },
+
   profileCard: {
     backgroundColor: "#fff",
     borderRadius: 16,
@@ -249,6 +301,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#0066cc",
   },
+
   statsContainer: {
     flexDirection: "row",
     backgroundColor: "#fff",
@@ -281,6 +334,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#f0f0f0",
     marginHorizontal: 8,
   },
+
   section: {
     marginBottom: 24,
   },
@@ -295,11 +349,7 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: "#1a1a1a",
   },
-  seeAllText: {
-    fontSize: 14,
-    color: "#0066cc",
-    fontWeight: "500",
-  },
+
   actionsGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -313,25 +363,36 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.08,
     shadowRadius: 6,
     elevation: 2,
   },
-  primaryAction: {
-    backgroundColor: "#0066cc",
-  },
+
   actionIconContainer: {
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: "#0066cc",
+    backgroundColor: "#f0f0f0",
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 12,
   },
+
+  // neutral icon circle (used for Scan)
+  neutralIcon: {
+    backgroundColor: "#f0f0f0",
+  },
+
+  // secondary icon circle (used for Upcoming/Attended)
   secondaryIcon: {
     backgroundColor: "#e6f2ff",
   },
+
+  // danger icon circle (for logout)
+  dangerIcon: {
+    backgroundColor: "#fdecea",
+  },
+
   actionText: {
     fontSize: 16,
     fontWeight: "600",
@@ -342,6 +403,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: "#666",
   },
+
   emptyState: {
     backgroundColor: "#fff",
     borderRadius: 12,

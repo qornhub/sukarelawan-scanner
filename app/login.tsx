@@ -19,10 +19,10 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { FontAwesome, FontAwesome5 } from '@expo/vector-icons';
-import api, { setTokenAndUser } from '../api';
+import api, { setTokenAndUser } from './api';
 
 // local background image (already in your assets)
-const BACKGROUND = require('../../assets/app login background.jpg');
+const BACKGROUND = require('../assets/app login background.jpg');
 
 export default function Login(): ReactElement {
   const router = useRouter();
@@ -93,7 +93,7 @@ export default function Login(): ReactElement {
     <View style={styles.outer}>
       <View style={styles.leftCard}>
               <CardContent
-                logoSource={require('../../assets/sukarelawan_logo.png')}
+                logoSource={require('../assets/sukarelawan_logo.png')}
                 email={email}
                 setEmail={setEmail}
                 password={password}

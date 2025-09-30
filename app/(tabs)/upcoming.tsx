@@ -12,7 +12,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import api, { loadTokenAndUser } from "./api";
+import api, { loadTokenAndUser } from "../api";
 
 function formatDate(dateStr?: string | null) {
   if (!dateStr) return "-";

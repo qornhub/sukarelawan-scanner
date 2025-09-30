@@ -13,7 +13,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import api, { loadTokenAndUser } from "./api"; // correct import path
+import api, { loadTokenAndUser } from "../api"; // correct import path
 
 function formatDate(dateStr?: string | null) {
   if (!dateStr) return "-";
