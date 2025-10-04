@@ -1,5 +1,5 @@
 // app/(tabs)/attended.tsx
-import React, { useEffect, useState, useCallback, useMemo } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -10,6 +10,7 @@ import {
   TouchableOpacity,
   SafeAreaView,
   Platform,
+  StatusBar,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -176,11 +177,23 @@ export default function AttendedScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
+      {/* ✅ Top Header with Back — goes to home ("/") using replace */}
+      <View style={styles.topHeader}>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => {
+            // replace to home so back stack won't return to login
+            router.replace("/(tabs)/home");
+          }}
+        >
+          <Ionicons name="chevron-back" size={24} color="#000" />
+        </TouchableOpacity>
+        <Text style={styles.topHeaderTitle}>Attended Events</Text>
+        <View style={{ width: 40 }} />
+      </View>
+
       <View style={styles.container}>
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>Attended Events</Text>
-          <Text style={styles.headerSubtitle}>You have attended {totalEvents} events</Text>
-        </View>
+        <Text style={styles.headerSubtitle}>You have attended {totalEvents} events</Text>
 
         {error ? (
           <ErrorState />
@@ -216,11 +229,23 @@ export default function AttendedScreen() {
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: "#f8f9fa" },
   container: { flex: 1, paddingHorizontal: 20 },
+  topHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#eee",
+    backgroundColor: "#fff",
+    // small top offset so header sits below status bar/time/wifi on phones
+    marginTop: Platform.OS === "android" ? (StatusBar.currentHeight ?? 8) : 8,
+  },
+  backButton: { padding: 6 },
+  topHeaderTitle: { fontSize: 20, fontWeight: "600", color: "#000" },
   loadingContainer: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: "#f8f9fa" },
   loadingText: { marginTop: 12, fontSize: 16, color: "#666" },
-  header: { paddingVertical: 20 },
-  headerTitle: { fontSize: 28, fontWeight: "700", color: "#1a1a1a", marginBottom: 4 },
-  headerSubtitle: { fontSize: 16, color: "#666" },
+  headerSubtitle: { fontSize: 16, color: "#666", marginVertical: 12 },
   listContainer: { paddingVertical: 8 },
   emptyListContainer: { flex: 1 },
   eventCard: {

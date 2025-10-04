@@ -9,6 +9,8 @@ import {
   RefreshControl,
   TouchableOpacity,
   SafeAreaView,
+  Platform,
+  StatusBar,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -18,33 +20,32 @@ function formatDate(dateStr?: string | null) {
   if (!dateStr) return "-";
   const d = new Date(dateStr);
   if (isNaN(d.getTime())) return dateStr;
-  
-  // More user-friendly date format
+
   const today = new Date();
   const tomorrow = new Date(today);
   tomorrow.setDate(tomorrow.getDate() + 1);
 
   if (d.toDateString() === today.toDateString()) {
-    return `Today, ${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+    return `Today, ${d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
   } else if (d.toDateString() === tomorrow.toDateString()) {
-    return `Tomorrow, ${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+    return `Tomorrow, ${d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
   } else {
-    return d.toLocaleDateString([], { 
-      weekday: 'short',
-      month: 'short', 
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
+    return d.toLocaleDateString([], {
+      weekday: "short",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
     });
   }
 }
 
 function formatEventDuration(startStr?: string | null, endStr?: string | null) {
   if (!startStr) return "";
-  
+
   const start = new Date(startStr);
   const end = endStr ? new Date(endStr) : null;
-  
+
   if (isNaN(start.getTime())) return "";
 
   if (!end || isNaN(end.getTime())) {
@@ -52,13 +53,16 @@ function formatEventDuration(startStr?: string | null, endStr?: string | null) {
   }
 
   const isSameDay = start.toDateString() === end.toDateString();
-  
+
   if (isSameDay) {
-    return `${start.toLocaleDateString([], { 
-      month: 'short', 
-      day: 'numeric',
-      year: 'numeric'
-    })} • ${start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - ${end.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+    return `${start.toLocaleDateString([], {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    })} • ${start.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} - ${end.toLocaleTimeString(
+      [],
+      { hour: "2-digit", minute: "2-digit" }
+    )}`;
   } else {
     return `${formatDate(startStr)} - ${formatDate(endStr)}`;
   }
@@ -96,7 +100,7 @@ export default function UpcomingScreen() {
   }, [loadEvents]);
 
   const renderEventCard = ({ item }: { item: any }) => (
-    <TouchableOpacity 
+    <TouchableOpacity
       style={styles.eventCard}
       onPress={() => {
         // Navigate to event details if needed
@@ -159,10 +163,7 @@ export default function UpcomingScreen() {
     <View style={styles.emptyState}>
       <Ionicons name="calendar-outline" size={64} color="#ccc" />
       <Text style={styles.emptyStateTitle}>No Upcoming Events</Text>
-      <Text style={styles.emptyStateSubtitle}>
-        You haven't registered for any upcoming events yet
-      </Text>
-      
+      <Text style={styles.emptyStateSubtitle}>You haven't registered for any upcoming events yet</Text>
     </View>
   );
 
@@ -170,13 +171,8 @@ export default function UpcomingScreen() {
     <View style={styles.emptyState}>
       <Ionicons name="warning-outline" size={64} color="#ff6b6b" />
       <Text style={styles.errorStateTitle}>Unable to Load Events</Text>
-      <Text style={styles.emptyStateSubtitle}>
-        {error}
-      </Text>
-      <TouchableOpacity 
-        style={styles.retryButton}
-        onPress={loadEvents}
-      >
+      <Text style={styles.emptyStateSubtitle}>{error}</Text>
+      <TouchableOpacity style={styles.retryButton} onPress={loadEvents}>
         <Text style={styles.retryButtonText}>Try Again</Text>
       </TouchableOpacity>
     </View>
@@ -195,28 +191,34 @@ export default function UpcomingScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
+      {/* Top header with back button — replace to home so stack won't return to login */}
+      <View style={styles.topHeader}>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => {
+            router.replace("/(tabs)/home");
+          }}
+        >
+          <Ionicons name="chevron-back" size={24} color="#000" />
+        </TouchableOpacity>
+        <Text style={styles.topHeaderTitle}>Upcoming Events</Text>
+        <View style={{ width: 40 }} />
+      </View>
+
       <View style={styles.container}>
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>Upcoming Events</Text>
-          <Text style={styles.headerSubtitle}>
-            {events.length} event{events.length !== 1 ? 's' : ''} registered
-          </Text>
-        </View>
+        <Text style={styles.headerSubtitle}>
+          {events.length} event{events.length !== 1 ? "s" : ""} registered
+        </Text>
 
         {error ? (
           <ErrorState />
         ) : (
           <FlatList
             data={events}
-            keyExtractor={(item) => item.event_id ? String(item.event_id) : Math.random().toString()}
+            keyExtractor={(item) => (item.event_id ? String(item.event_id) : Math.random().toString())}
             renderItem={renderEventCard}
             refreshControl={
-              <RefreshControl 
-                refreshing={refreshing} 
-                onRefresh={onRefresh}
-                colors={["#0066cc"]}
-                tintColor="#0066cc"
-              />
+              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={["#0066cc"]} tintColor="#0066cc" />
             }
             ListEmptyComponent={<EmptyState />}
             showsVerticalScrollIndicator={false}
@@ -237,6 +239,19 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 20,
   },
+  topHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#eee",
+    backgroundColor: "#fff",
+    marginTop: Platform.OS === "android" ? (StatusBar.currentHeight ?? 8) : 8,
+  },
+  backButton: { padding: 6 },
+  topHeaderTitle: { fontSize: 20, fontWeight: "600", color: "#000" },
   loadingContainer: {
     flex: 1,
     alignItems: "center",
@@ -248,19 +263,10 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "#666",
   },
-  header: {
-    paddingVertical: 20,
-    paddingHorizontal: 0,
-  },
-  headerTitle: {
-    fontSize: 28,
-    fontWeight: "700",
-    color: "#1a1a1a",
-    marginBottom: 4,
-  },
   headerSubtitle: {
     fontSize: 16,
     color: "#666",
+    marginVertical: 12,
   },
   listContainer: {
     paddingVertical: 8,

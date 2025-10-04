@@ -1,12 +1,23 @@
 // app/scanner.tsx
 import React, { useEffect, useState, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert, ActivityIndicator, Dimensions } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  Alert,
+  ActivityIndicator,
+  Dimensions,
+  SafeAreaView,
+  StatusBar,
+  Platform,
+} from 'react-native';
 import { CameraView, Camera } from 'expo-camera';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import api, { loadTokenAndUser } from './api';
 
-const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
+const { width: screenWidth } = Dimensions.get('window');
 const SCANNER_SIZE = Math.min(screenWidth * 0.7, 300);
 
 export default function ScannerScreen() {
@@ -14,7 +25,6 @@ export default function ScannerScreen() {
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
   const [scanned, setScanned] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [torchOn, setTorchOn] = useState(false);
   const isProcessingRef = useRef(false);
 
   useEffect(() => {
@@ -46,10 +56,9 @@ export default function ScannerScreen() {
         return;
       }
 
-      // Extract event id from scanned URL or just use it directly
+      // Extract event id
       const urlRegex = /\/api\/ngo\/events\/([0-9a-fA-F-]{10,36})\/scan/;
       const match = data.match(urlRegex);
-
       let eventId = match?.[1] || null;
       if (!eventId && /^[0-9a-fA-F-]{8,36}$/.test(data.trim())) {
         eventId = data.trim();
@@ -83,29 +92,48 @@ export default function ScannerScreen() {
 
   if (hasPermission === null) {
     return (
-      <View style={[styles.center, styles.container]}>
+      <SafeAreaView style={[styles.center, styles.container]}>
+        <StatusBar barStyle="light-content" />
         <ActivityIndicator size="large" color="#0066cc" />
         <Text style={styles.permissionText}>Requesting camera permission...</Text>
-      </View>
+      </SafeAreaView>
     );
   }
 
   if (hasPermission === false) {
     return (
-      <View style={[styles.center, styles.container]}>
-        <Ionicons name="videocam-off" size={64} color="#999" />
-        <Text style={styles.permissionText}>No access to camera</Text>
-        <Text style={styles.subText}>Please grant permission in settings</Text>
-        <TouchableOpacity style={styles.button} onPress={() => router.back()}>
-          <Text style={styles.buttonText}>Go Back</Text>
-        </TouchableOpacity>
-      </View>
+      <SafeAreaView style={[styles.container, { backgroundColor: '#fff' }]}>
+        <StatusBar barStyle="dark-content" />
+        <View style={[styles.header, { backgroundColor: '#fff' }]}>
+          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+            <Ionicons name="chevron-back" size={24} color="#000" />
+          </TouchableOpacity>
+          <Text style={[styles.headerTitle, { color: '#000' }]}>Scanner</Text>
+          <View style={styles.placeholder} />
+        </View>
+
+        <View style={[styles.center, { backgroundColor: '#fff' }]}>
+          <Ionicons name="videocam-off" size={64} color="#999" />
+          <Text style={[styles.permissionText, { color: '#000' }]}>No access to camera</Text>
+          <Text style={styles.subText}>Please grant permission in settings</Text>
+          <TouchableOpacity style={styles.button} onPress={() => router.back()}>
+            <Text style={styles.buttonText}>Go Back</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
     );
   }
 
   return (
-    <View style={styles.container}>
-      
+    <SafeAreaView style={styles.container}>
+      <StatusBar barStyle="light-content" />
+      <View style={styles.header}>
+        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+          <Ionicons name="chevron-back" size={24} color="#fff" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Scanner</Text>
+        <View style={styles.placeholder} />
+      </View>
 
       <View style={styles.scannerContainer}>
         <CameraView
@@ -115,10 +143,9 @@ export default function ScannerScreen() {
             barcodeTypes: ["qr", "pdf417", "code128"],
           }}
           onBarcodeScanned={scanned ? undefined : handleBarCodeScanned}
-          flash={torchOn ? 'on' : 'off'}
         />
-        
-        {/* Scanner Frame Overlay */}
+
+        {/* Frame Overlay */}
         <View style={styles.overlay}>
           <View style={styles.scannerFrame}>
             <View style={[styles.corner, styles.cornerTopLeft]} />
@@ -126,50 +153,37 @@ export default function ScannerScreen() {
             <View style={[styles.corner, styles.cornerBottomLeft]} />
             <View style={[styles.corner, styles.cornerBottomRight]} />
           </View>
-          
+
           {isProcessing && (
             <View style={styles.processingOverlay}>
               <ActivityIndicator size="large" color="#fff" />
               <Text style={styles.processingText}>Processing...</Text>
             </View>
           )}
-          
+
           <Text style={styles.instructionText}>
             Position the QR code within the frame
           </Text>
         </View>
       </View>
-
-      
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { 
-    flex: 1, 
-    backgroundColor: '#000',
-  },
+  container: { flex: 1, backgroundColor: '#000' },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingTop: 50,
+    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight || 12 : 12,
     paddingHorizontal: 16,
-    paddingBottom: 16,
+    paddingBottom: 12,
     backgroundColor: '#000',
   },
-  backButton: {
-    padding: 8,
-  },
-  headerTitle: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: '600',
-  },
-  placeholder: {
-    width: 40,
-  },
+  backButton: { padding: 8 },
+  headerTitle: { color: '#fff', fontSize: 18, fontWeight: '600' },
+  placeholder: { width: 40 },
   scannerContainer: {
     flex: 1,
     margin: 16,
@@ -177,25 +191,9 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     backgroundColor: '#000',
   },
-  center: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#fff',
-  },
-  permissionText: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginTop: 16,
-    textAlign: 'center',
-  },
-  subText: {
-    fontSize: 14,
-    color: '#666',
-    marginTop: 8,
-    textAlign: 'center',
-    marginBottom: 24,
-  },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff' },
+  permissionText: { fontSize: 16, fontWeight: '600', marginTop: 16, textAlign: 'center' },
+  subText: { fontSize: 14, color: '#666', marginTop: 8, textAlign: 'center', marginBottom: 24 },
   overlay: {
     ...StyleSheet.absoluteFillObject,
     alignItems: 'center',
@@ -210,91 +208,20 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
     position: 'relative',
   },
-  corner: {
-    position: 'absolute',
-    width: 30,
-    height: 30,
-    borderColor: '#0066cc',
-  },
-  cornerTopLeft: {
-    top: -2,
-    left: -2,
-    borderTopWidth: 4,
-    borderLeftWidth: 4,
-    borderTopLeftRadius: 12,
-  },
-  cornerTopRight: {
-    top: -2,
-    right: -2,
-    borderTopWidth: 4,
-    borderRightWidth: 4,
-    borderTopRightRadius: 12,
-  },
-  cornerBottomLeft: {
-    bottom: -2,
-    left: -2,
-    borderBottomWidth: 4,
-    borderLeftWidth: 4,
-    borderBottomLeftRadius: 12,
-  },
-  cornerBottomRight: {
-    bottom: -2,
-    right: -2,
-    borderBottomWidth: 4,
-    borderRightWidth: 4,
-    borderBottomRightRadius: 12,
-  },
-  instructionText: {
-    color: '#fff',
-    fontSize: 14,
-    marginTop: 32,
-    textAlign: 'center',
-    paddingHorizontal: 32,
-  },
+  corner: { position: 'absolute', width: 30, height: 30, borderColor: '#0066cc' },
+  cornerTopLeft: { top: -2, left: -2, borderTopWidth: 4, borderLeftWidth: 4, borderTopLeftRadius: 12 },
+  cornerTopRight: { top: -2, right: -2, borderTopWidth: 4, borderRightWidth: 4, borderTopRightRadius: 12 },
+  cornerBottomLeft: { bottom: -2, left: -2, borderBottomWidth: 4, borderLeftWidth: 4, borderBottomLeftRadius: 12 },
+  cornerBottomRight: { bottom: -2, right: -2, borderBottomWidth: 4, borderRightWidth: 4, borderBottomRightRadius: 12 },
+  instructionText: { color: '#fff', fontSize: 14, marginTop: 32, textAlign: 'center', paddingHorizontal: 32 },
   processingOverlay: {
     position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
+    top: 0, left: 0, right: 0, bottom: 0,
     backgroundColor: 'rgba(0, 0, 0, 0.7)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  processingText: {
-    color: '#fff',
-    marginTop: 12,
-    fontSize: 16,
-  },
-  controls: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    padding: 16,
-    backgroundColor: '#000',
-  },
-  controlButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 12,
-    minWidth: 100,
-    justifyContent: 'center',
-  },
-  secondaryButton: {
-    backgroundColor: 'transparent',
-    borderWidth: 1,
-    borderColor: '#0066cc',
-  },
-  torchButton: {
-    backgroundColor: '#333',
-  },
-  scanButton: {
-    backgroundColor: '#0066cc',
-  },
-  scanButtonDisabled: {
-    backgroundColor: '#666',
-  },
+  processingText: { color: '#fff', marginTop: 12, fontSize: 16 },
   button: {
     backgroundColor: '#0066cc',
     padding: 12,
@@ -302,14 +229,5 @@ const styles = StyleSheet.create({
     minWidth: 120,
     alignItems: 'center',
   },
-  buttonText: {
-    color: '#fff',
-    fontWeight: '600',
-    marginLeft: 8,
-  },
-  secondaryButtonText: {
-    color: '#0066cc',
-    fontWeight: '600',
-    marginLeft: 8,
-  },
+  buttonText: { color: '#fff', fontWeight: '600' },
 });
