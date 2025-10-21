@@ -3,21 +3,31 @@
   "compilerOptions": {
     "strict": true,
     "jsx": "react-jsx",
-    "moduleResolution": "bundler",         // <- changed to bundler (compatible with expo base)
+    "moduleResolution": "bundler",
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
     "resolveJsonModule": true,
     "skipLibCheck": true,
     "noEmit": true,
-    "types": ["react", "react-native"],
+    "types": ["react"],
+
     "paths": {
       "@/*": ["./*"]
-    }
+    },
+
+    "lib": ["ESNext", "DOM"],
+    "target": "ESNext",
+    "allowJs": true
   },
   "include": [
     "**/*.ts",
     "**/*.tsx",
     ".expo/types/**/*.ts",
     "expo-env.d.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "babel.config.js",
+    "metro.config.js"
   ]
 }

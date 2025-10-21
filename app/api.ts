@@ -2,10 +2,12 @@
 import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
 
-export const API_BASE = 'http://192.168.0.118/1fyp/fyp/public'; // <- use your LAN IP or ngrok URL
-
+//export const API_BASE = 'http://192.168.1.20/1fyp/fyp/public'; // <- use your LAN IP or ngrok URL
+//export const API_BASE = 'http://sukarela.local';
+// app/api.ts
+export const API_BASE = 'http://192.168.1.20'; // <-- use just the host (or http://sukarela.local if your device resolves it)
 const api = axios.create({
-  baseURL: API_BASE + '/api',
+  baseURL: API_BASE + '/api', // => requests go to http://192.168.1.20/api/...
   headers: { 'Content-Type': 'application/json' },
 });
 
